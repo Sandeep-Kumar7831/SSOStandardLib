@@ -1,6 +1,7 @@
 ﻿using Duende.IdentityModel.OidcClient.Browser;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace MauiSsoLibrary.Services
@@ -54,30 +55,60 @@ namespace MauiSsoLibrary.Services
         {
             try
             {
-                var uri = new Uri(callbackUrl);
-                var baseUrl = $"{uri.Scheme}://{uri.Host}";
+                Debug.WriteLine($"[CallbackManager] Processing: {callbackUrl}");
 
+                var uri = new Uri(callbackUrl);
+
+                // Build the base URL in the format: scheme://host/path
+                var baseUrl = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}";
+
+                Debug.WriteLine($"[CallbackManager] Looking for: {baseUrl}");
+                Debug.WriteLine($"[CallbackManager] Registered callbacks: {string.Join(", ", _callbacks.Keys)}");
+
+                // Try exact match first
                 if (_callbacks.TryGetValue(baseUrl, out var registration))
                 {
-                    // Check if this is a cancellation
+                    Debug.WriteLine($"[CallbackManager] ✓ Found callback handler for {baseUrl}");
+
                     if (uri.Query.Contains("error=access_denied") || uri.Query.Contains("error=user_cancelled"))
                     {
+                        Debug.WriteLine("[CallbackManager] User cancelled");
                         registration.OnCancel?.Invoke();
                     }
                     else
                     {
+                        Debug.WriteLine("[CallbackManager] Invoking success callback");
                         registration.OnCallback?.Invoke(callbackUrl);
                     }
                     return true;
                 }
+
+                // Try base scheme://host as fallback
+                var baseUrl2 = $"{uri.Scheme}://{uri.Host}";
+                if (_callbacks.TryGetValue(baseUrl2, out var registration2))
+                {
+                    Debug.WriteLine($"[CallbackManager] ✓ Found callback handler (fallback) for {baseUrl2}");
+
+                    if (uri.Query.Contains("error=access_denied") || uri.Query.Contains("error=user_cancelled"))
+                    {
+                        registration2.OnCancel?.Invoke();
+                    }
+                    else
+                    {
+                        registration2.OnCallback?.Invoke(callbackUrl);
+                    }
+                    return true;
+                }
+
+                Debug.WriteLine($"[CallbackManager] ✗ No handler found for {baseUrl}");
+                return false;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error handling callback: {ex.Message}");
+                Debug.WriteLine($"[CallbackManager] Error: {ex.Message}\n{ex.StackTrace}");
+                return false;
             }
-            return false;
         }
-
         private class CallbackRegistration
         {
             public string ExpectedCallback { get; set; }
@@ -132,10 +163,6 @@ namespace MauiSsoLibrary.Services
         macOS,
         Linux
     }
-
-    /// <summary>
-    /// Android browser implementation
-    /// </summary>
     public class AndroidBrowser : IBrowser
     {
         private readonly IPlatformDetector _platformDetector;
@@ -156,26 +183,40 @@ namespace MauiSsoLibrary.Services
                 _tcs = new TaskCompletionSource<BrowserResult>();
                 _expectedCallback = options.EndUrl;
 
-                // Set up callback handling before opening browser
+                // Set up callback handling BEFORE opening browser
                 SetupCallbackHandling(options.EndUrl);
 
-                // Set up cancellation token handling
-                cancellationToken.Register(() =>
+                // Set up cancellation token handling with timeout
+                using (cancellationToken.Register(() =>
                 {
                     _tcs?.TrySetResult(new BrowserResult
                     {
                         ResultType = BrowserResultType.UserCancel
                     });
-                });
+                }))
+                {
+                    // Add a timeout of 5 minutes
+                    var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
+                    var resultTask = _tcs.Task;
 
-                _platformDetector.OpenBrowser(options.StartUrl);
+                    _platformDetector.OpenBrowser(options.StartUrl);
 
-                // Wait for callback or cancellation
-                var result = await _tcs.Task.ConfigureAwait(false);
-                return result;
+                    var completedTask = await Task.WhenAny(resultTask, timeoutTask);
+
+                    if (completedTask == timeoutTask)
+                    {
+                        return new BrowserResult
+                        {
+                            ResultType = BrowserResultType.Timeout
+                        };
+                    }
+
+                    return await resultTask;
+                }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"AndroidBrowser error: {ex.Message}");
                 return new BrowserResult
                 {
                     ResultType = BrowserResultType.UnknownError,
@@ -195,6 +236,7 @@ namespace MauiSsoLibrary.Services
                 expectedCallback,
                 onCallback: (callbackUrl) =>
                 {
+                    System.Diagnostics.Debug.WriteLine($"AndroidBrowser callback received: {callbackUrl}");
                     _tcs?.TrySetResult(new BrowserResult
                     {
                         ResultType = BrowserResultType.Success,
@@ -203,6 +245,7 @@ namespace MauiSsoLibrary.Services
                 },
                 onCancel: () =>
                 {
+                    System.Diagnostics.Debug.WriteLine("AndroidBrowser user cancelled");
                     _tcs?.TrySetResult(new BrowserResult
                     {
                         ResultType = BrowserResultType.UserCancel

@@ -18,16 +18,16 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             })
-            // Add SSO plugin with configuration
-            .AddMauiSsoPlugin(config =>
-            {
-                config.Authority = "https://dev.psshub.honeywell.com/realms/catalystfabric";
-                config.ClientId = "cf_honeywell_launcher";
-                config.RedirectUri = "cfauth://com.honeywell.tools.honeywelllauncher/callback";
-                config.PostLogoutRedirectUri = "cfauth://com.honeywell.tools.honeywelllauncher/callback";
-                config.Scope = "openid email profile";
-                config.EnableDPoP = false; // Enable DPoP
-            });
+        // Add SSO plugin with configuration
+        .AddMauiSsoPlugin(config =>
+        {
+            config.Authority = "https://dev.psshub.honeywell.com/realms/catalystfabric";
+            config.ClientId = "cf_honeywell_launcher";
+            config.RedirectUri = "cfauth://callback";
+            config.PostLogoutRedirectUri = "cfauth://callback";
+            config.Scope = "openid email profile offline_access";
+            config.EnableDPoP = false;
+        });
 
         // Register pages
         builder.Services.AddSingleton<MainPage>();

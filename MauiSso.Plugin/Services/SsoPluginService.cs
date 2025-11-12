@@ -65,7 +65,10 @@ namespace MauiSso.Plugin.Services
         {
             try
             {
+                Debug.WriteLine("MauiSsoPlugin: Starting login");
                 var result = await _oidcAuthService.LoginAsync();
+
+                Debug.WriteLine($"MauiSsoPlugin: Login result - Success: {result.IsSuccess}, Error: {result.Error}");
 
                 if (result.IsSuccess)
                 {
@@ -83,7 +86,7 @@ namespace MauiSso.Plugin.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Login exception: {ex.Message}");
+                Debug.WriteLine($"Login exception: {ex.Message}\n{ex.StackTrace}");
                 return false;
             }
         }
