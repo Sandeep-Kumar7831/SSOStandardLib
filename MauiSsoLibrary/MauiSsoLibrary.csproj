@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+
+		<!-- NuGet Package Info -->
+		<PackageId>MauiSsoLibrary</PackageId>
+		<Version>2.0.0</Version>
+		<Authors>Your Company</Authors>
+		<Description>Cross-platform SSO library using Duende OIDC Client</Description>
+		<PackageTags>sso;oidc;duende;authentication;netstandard</PackageTags>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Duende.IdentityModel.OidcClient" Version="6.0.1" />
+		<PackageReference Include="Duende.IdentityModel.OidcClient.Extensions" Version="6.0.1" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+	</ItemGroup>
+
+</Project>

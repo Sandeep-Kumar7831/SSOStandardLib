@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+
+		<PackageId>MauiSso.Plugin</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Your Company</Authors>
+		<Description>MAUI SSO Plugin - Wrapper for MauiSsoLibrary with platform-specific implementations</Description>
+		<PackageTags>sso;oidc;maui;plugin;authentication</PackageTags>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
+	  <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
+	  <PackageReference Include="Microsoft.Maui.Essentials" Version="8.0.100" />
+	</ItemGroup>
+
+
+
+
+	<ItemGroup>
+	  <ProjectReference Include="..\MauiSsoLibrary\MauiSsoLibrary.csproj" />
+	</ItemGroup>
+
+</Project>

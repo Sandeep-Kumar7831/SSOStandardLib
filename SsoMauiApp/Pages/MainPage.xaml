@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="SsoMauiApp.Pages.MainPage"
+             Title="SSO Login">
+
+    <VerticalStackLayout Padding="30" Spacing="15" VerticalOptions="Center">
+
+        <Label Text="SSO Authentication" 
+               FontSize="24" 
+               FontAttributes="Bold"
+               HorizontalTextAlignment="Center" />
+
+        <Label Text="{Binding StatusMessage}" 
+               FontSize="14"
+               HorizontalTextAlignment="Center"
+               TextColor="Gray" />
+
+        <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                          IsVisible="{Binding IsLoading}"
+                          Color="Blue" />
+
+        <Button Text="Initialize SSO"
+                Command="{Binding InitializeCommand}"
+                IsEnabled="{Binding IsLoading, StringFormat='!{0}'}"
+                Padding="10" />
+
+        <Button Text="Login"
+                Command="{Binding LoginCommand}"
+                IsEnabled="{Binding IsLoading, StringFormat='!{0}'}"
+                Padding="10"
+                Background="Green"
+                TextColor="White" />
+
+        <Frame BorderColor="LightGray" 
+               CornerRadius="10" 
+               Padding="15"
+               HasShadow="True">
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Status:" FontAttributes="Bold" />
+                <Label Text="{Binding StatusMessage}" FontSize="12" />
+            </VerticalStackLayout>
+        </Frame>
+
+    </VerticalStackLayout>
+
+</ContentPage>
