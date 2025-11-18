@@ -1,4 +1,5 @@
-﻿using Android.App;
+﻿
+using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Content;
@@ -44,6 +45,10 @@ namespace SsoMauiApp
 
             var callbackUrl = uri.ToString();
             Debug.WriteLine($"✓ MainActivity received callback: {callbackUrl}");
+            Debug.WriteLine($"✓ Scheme: {uri.Scheme}");
+            Debug.WriteLine($"✓ Host: {uri.Host}");
+            Debug.WriteLine($"✓ Path: {uri.Path}");
+            Debug.WriteLine($"✓ Query: {uri.Query}");
 
             if (uri.Scheme == "cfauth")
             {
@@ -54,7 +59,7 @@ namespace SsoMauiApp
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"✗ Error handling callback: {ex.Message}");
+                    Debug.WriteLine($"✗ Error handling callback: {ex.Message}\n{ex.StackTrace}");
                 }
             }
         }

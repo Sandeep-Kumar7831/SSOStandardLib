@@ -1,4 +1,5 @@
-﻿using Duende.IdentityModel.OidcClient;
+﻿
+using Duende.IdentityModel.OidcClient;
 using Duende.IdentityModel.OidcClient.Browser;
 using System;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ namespace MauiSsoLibrary.Services
     {
         private readonly OidcClient _oidcClient;
         private readonly ITokenStore _tokenStore;
+        private readonly SsoConfiguration _config;
 
         public OidcAuthService(
             ITokenStore tokenStore,
@@ -20,6 +22,16 @@ namespace MauiSsoLibrary.Services
             if (!config.IsValid())
                 throw new ArgumentException($"Invalid SSO configuration. Errors: {string.Join(", ", config.GetValidationErrors())}");
 
+            _config = config;
+
+            System.Diagnostics.Debug.WriteLine("\n========== OIDC Configuration ==========");
+            System.Diagnostics.Debug.WriteLine($"Authority: {config.Authority}");
+            System.Diagnostics.Debug.WriteLine($"ClientId: {config.ClientId}");
+            System.Diagnostics.Debug.WriteLine($"RedirectUri: {config.RedirectUri}");
+            System.Diagnostics.Debug.WriteLine($"Scope: {config.Scope}");
+            System.Diagnostics.Debug.WriteLine($"EnableDPoP: {config.EnableDPoP}");
+            System.Diagnostics.Debug.WriteLine("=======================================\n");
+
             var options = new OidcClientOptions
             {
                 Authority = config.Authority,
@@ -28,7 +40,8 @@ namespace MauiSsoLibrary.Services
                 Scope = config.Scope,
                 RedirectUri = config.RedirectUri,
                 PostLogoutRedirectUri = config.PostLogoutRedirectUri,
-                Browser = browser
+                Browser = browser,
+                LoadProfile = true,
             };
 
             _oidcClient = new OidcClient(options);
@@ -38,10 +51,18 @@ namespace MauiSsoLibrary.Services
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("\n========== Starting Login ==========");
+
                 var result = await _oidcClient.LoginAsync(new LoginRequest());
+
+                System.Diagnostics.Debug.WriteLine($"Login Result - IsError: {result.IsError}");
+                System.Diagnostics.Debug.WriteLine($"Error: {result.Error}");
+                System.Diagnostics.Debug.WriteLine($"ErrorDescription: {result.ErrorDescription}");
 
                 if (result.IsError)
                 {
+                    System.Diagnostics.Debug.WriteLine($"✗ Login Error: {result.Error} - {result.ErrorDescription}");
+
                     return new AuthResult
                     {
                         IsSuccess = false,
@@ -49,6 +70,9 @@ namespace MauiSsoLibrary.Services
                         ErrorDescription = result.ErrorDescription
                     };
                 }
+
+                System.Diagnostics.Debug.WriteLine($"✓ Login successful");
+                System.Diagnostics.Debug.WriteLine($"AccessToken: {(result.AccessToken != null ? result.AccessToken.Substring(0, 20) + "..." : "null")}");
 
                 var tokenResponse = new TokenResponse
                 {
@@ -60,6 +84,8 @@ namespace MauiSsoLibrary.Services
 
                 await _tokenStore.SaveTokensAsync(tokenResponse);
 
+                System.Diagnostics.Debug.WriteLine($"✓ Tokens saved to store");
+
                 return new AuthResult
                 {
                     IsSuccess = true,
@@ -68,6 +94,9 @@ namespace MauiSsoLibrary.Services
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"✗ Login Exception: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+
                 return new AuthResult
                 {
                     IsSuccess = false,
@@ -81,9 +110,12 @@ namespace MauiSsoLibrary.Services
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("\n========== Starting Token Refresh ==========");
+
                 var refreshToken = _tokenStore.GetRefreshToken();
                 if (string.IsNullOrEmpty(refreshToken))
                 {
+                    System.Diagnostics.Debug.WriteLine("✗ No refresh token available");
                     return new AuthResult
                     {
                         IsSuccess = false,
@@ -95,6 +127,7 @@ namespace MauiSsoLibrary.Services
 
                 if (result.IsError)
                 {
+                    System.Diagnostics.Debug.WriteLine($"✗ Refresh Error: {result.Error} - {result.ErrorDescription}");
                     return new AuthResult
                     {
                         IsSuccess = false,
@@ -102,6 +135,8 @@ namespace MauiSsoLibrary.Services
                         ErrorDescription = result.ErrorDescription
                     };
                 }
+
+                System.Diagnostics.Debug.WriteLine($"✓ Token refresh successful");
 
                 var tokenResponse = new TokenResponse
                 {
@@ -117,6 +152,7 @@ namespace MauiSsoLibrary.Services
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"✗ Refresh Exception: {ex.Message}\n{ex.StackTrace}");
                 return new AuthResult
                 {
                     IsSuccess = false,
@@ -130,6 +166,8 @@ namespace MauiSsoLibrary.Services
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("\n========== Starting Logout ==========");
+
                 var idToken = _tokenStore.GetIdToken();
                 if (!string.IsNullOrEmpty(idToken))
                 {
@@ -137,10 +175,11 @@ namespace MauiSsoLibrary.Services
                 }
 
                 _tokenStore.ClearTokens();
+                System.Diagnostics.Debug.WriteLine("✓ Logout successful");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Logout error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"✗ Logout error: {ex.Message}");
             }
         }
 

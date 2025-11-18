@@ -1,0 +1,143 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ExternStandardApp.Pages.MainPage"
+             Title="Token Reader">
+
+    <VerticalStackLayout Padding="20" Spacing="15">
+
+        <Label Text="Token Reader App" 
+               FontSize="28" 
+               FontAttributes="Bold"
+               HorizontalTextAlignment="Center" />
+
+        <Label Text="Via MauiSso.Plugin → MauiSsoLibrary" 
+               FontSize="12"
+               TextColor="Gray"
+               HorizontalTextAlignment="Center" />
+
+        <!-- Status Message -->
+        <Frame BorderColor="LightGray" 
+               CornerRadius="10" 
+               Padding="15"
+               HasShadow="True"
+              >
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Status:" FontAttributes="Bold" />
+                <Label Text="{Binding StatusMessage}" 
+                       FontSize="12"
+                       LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- Loading Indicator -->
+        <ActivityIndicator IsRunning="{Binding IsLoading}" 
+                          IsVisible="{Binding IsLoading}"
+                          Color="Blue" />
+
+        <!-- Tokens Display -->
+        <Frame BorderColor="Green" 
+               CornerRadius="10" 
+               Padding="15"
+               HasShadow="True"
+               IsVisible="{Binding TokenFound}">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="🔓 Tokens Read from SsoMauiApp" 
+                       FontSize="16" 
+                       FontAttributes="Bold"
+                       TextColor="Green" />
+
+                <StackLayout Spacing="8">
+                    <Label Text="Access Token:" 
+                           FontAttributes="Bold"
+                           FontSize="12" />
+                    <Label Text="{Binding AccessToken}" 
+                           FontSize="11"
+                           TextColor="DarkGray"
+                           LineBreakMode="WordWrap" />
+                </StackLayout>
+
+                <StackLayout Spacing="8">
+                    <Label Text="Refresh Token:" 
+                           FontAttributes="Bold"
+                           FontSize="12" />
+                    <Label Text="{Binding RefreshToken}" 
+                           FontSize="11"
+                           TextColor="DarkGray"
+                           LineBreakMode="WordWrap" />
+                </StackLayout>
+
+                <StackLayout Spacing="8">
+                    <Label Text="ID Token:" 
+                           FontAttributes="Bold"
+                           FontSize="12" />
+                    <Label Text="{Binding IdToken}" 
+                           FontSize="11"
+                           TextColor="DarkGray"
+                           LineBreakMode="WordWrap" />
+                </StackLayout>
+
+                <Label Text="{Binding IsTokenValid, StringFormat='Token Valid: {0}'}" 
+                       FontSize="12"
+                       FontAttributes="Bold"
+                       TextColor="Green" />
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- Buttons -->
+        <StackLayout Spacing="10">
+            <Button Text="Initialize Plugin"
+                    Command="{Binding InitializePluginCommand}"
+                    IsEnabled="{Binding IsLoading, StringFormat='!{0}'}"
+                    Padding="10"
+                    Background="Purple"
+                    TextColor="White"
+                    FontSize="14" />
+
+            <Button Text="Read Tokens via Plugin"
+                    Command="{Binding ReadTokensCommand}"
+                    IsEnabled="{Binding IsLoading, StringFormat='!{0}'}"
+                    Padding="10"
+                    Background="Blue"
+                    TextColor="White"
+                    FontSize="14" />
+
+            <Button Text="Refresh Display"
+                    Command="{Binding RefreshTokenDisplayCommand}"
+                    IsEnabled="{Binding IsLoading, StringFormat='!{0}'}"
+                    Padding="10"
+                    Background="Orange"
+                    TextColor="White" />
+
+            <Button Text="Copy Access Token"
+                    Command="{Binding CopyAccessTokenCommand}"
+                    IsEnabled="{Binding TokenFound}"
+                    Padding="10"
+                    Background="Green"
+                    TextColor="White" />
+        </StackLayout>
+
+        <!-- Info Box -->
+        <Frame BorderColor="LightGray" 
+               CornerRadius="10" 
+               Padding="15"
+               HasShadow="True">
+            <VerticalStackLayout Spacing="5">
+                <Label Text="ℹ️ Architecture:" 
+                       FontAttributes="Bold"
+                       FontSize="12" />
+                <Label Text="ExternStandardMauiApp → MauiSso.Plugin → MauiSsoLibrary (.NET Standard)" 
+                       FontSize="11"
+                       TextColor="Gray" />
+                <Label Text="Both apps use SharedSecureTokenStore with same 'honeywell_launcher' prefix" 
+                       FontSize="11"
+                       TextColor="Gray" />
+                <Label Text="Tokens are encrypted and shared via Xamarin.Essentials.SecureStorage" 
+                       FontSize="11"
+                       TextColor="Gray" />
+            </VerticalStackLayout>
+        </Frame>
+
+    </VerticalStackLayout>
+
+</ContentPage>

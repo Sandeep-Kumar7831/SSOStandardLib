@@ -4,13 +4,6 @@
 	<uses-permission android:name="android.permission.INTERNET" />
 	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true">
 		<!-- MainActivity with custom scheme intent filter -->
-		<activity android:name=".MainActivity" android:exported="true">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-				<category android:name="android.intent.category.DEFAULT" />
-				<category android:name="android.intent.category.BROWSABLE" />
-				<data android:scheme="cfauth" />
-			</intent-filter>
-		</activity>
+		
 	</application>
 </manifest>

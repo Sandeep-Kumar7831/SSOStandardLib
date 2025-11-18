@@ -30,85 +30,121 @@ namespace MauiSsoLibrary.Services
     public static class CallbackManager
     {
         private static readonly ConcurrentDictionary<string, CallbackRegistration> _callbacks = new();
+        private static readonly object _lockObject = new();
 
         public static void RegisterCallback(string expectedCallback, Action<string> onCallback, Action onCancel = null)
         {
-            var uri = new Uri(expectedCallback);
-            var baseUrl = $"{uri.Scheme}://{uri.Host}";
-
-            _callbacks[baseUrl] = new CallbackRegistration
+            try
             {
-                ExpectedCallback = expectedCallback,
-                OnCallback = onCallback,
-                OnCancel = onCancel
-            };
+                var uri = new Uri(expectedCallback);
+                var baseUrl = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}";
+
+                Debug.WriteLine($"[CallbackManager] Registering callback for: {baseUrl}");
+                Debug.WriteLine($"[CallbackManager] Expected callback: {expectedCallback}");
+
+                lock (_lockObject)
+                {
+                    _callbacks[baseUrl] = new CallbackRegistration
+                    {
+                        ExpectedCallback = expectedCallback,
+                        OnCallback = onCallback,
+                        OnCancel = onCancel
+                    };
+                }
+
+                Debug.WriteLine($"[CallbackManager] ✓ Callback registered. Total callbacks: {_callbacks.Count}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CallbackManager] ✗ Error registering callback: {ex.Message}");
+            }
         }
 
         public static void UnregisterCallback(string expectedCallback)
         {
-            var uri = new Uri(expectedCallback);
-            var baseUrl = $"{uri.Scheme}://{uri.Host}";
-            _callbacks.TryRemove(baseUrl, out _);
+            try
+            {
+                var uri = new Uri(expectedCallback);
+                var baseUrl = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}";
+
+                lock (_lockObject)
+                {
+                    if (_callbacks.TryRemove(baseUrl, out _))
+                    {
+                        Debug.WriteLine($"[CallbackManager] ✓ Unregistered: {baseUrl}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[CallbackManager] ✗ Error unregistering: {ex.Message}");
+            }
         }
 
         public static bool HandleCallback(string callbackUrl)
         {
             try
             {
-                Debug.WriteLine($"[CallbackManager] Processing: {callbackUrl}");
+                Debug.WriteLine($"\n[CallbackManager] ========== Processing Callback ==========");
+                Debug.WriteLine($"[CallbackManager] Callback URL: {callbackUrl}");
 
                 var uri = new Uri(callbackUrl);
+                var callbackScheme = uri.Scheme;
+                var callbackHost = uri.Host;
+                var callbackPath = uri.AbsolutePath;
 
-                // Build the base URL in the format: scheme://host/path
-                var baseUrl = $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}";
+                Debug.WriteLine($"[CallbackManager] Parsed - Scheme: {callbackScheme}, Host: {callbackHost}, Path: {callbackPath}");
 
-                Debug.WriteLine($"[CallbackManager] Looking for: {baseUrl}");
-                Debug.WriteLine($"[CallbackManager] Registered callbacks: {string.Join(", ", _callbacks.Keys)}");
-
-                // Try exact match first
-                if (_callbacks.TryGetValue(baseUrl, out var registration))
+                lock (_lockObject)
                 {
-                    Debug.WriteLine($"[CallbackManager] ✓ Found callback handler for {baseUrl}");
+                    // Try exact match first: scheme://host/path
+                    var exactUrl = $"{callbackScheme}://{callbackHost}{callbackPath}";
+                    Debug.WriteLine($"[CallbackManager] Trying exact match: {exactUrl}");
+                    Debug.WriteLine($"[CallbackManager] Available callbacks: {string.Join(", ", _callbacks.Keys)}");
 
-                    if (uri.Query.Contains("error=access_denied") || uri.Query.Contains("error=user_cancelled"))
+                    if (_callbacks.TryGetValue(exactUrl, out var registration))
                     {
-                        Debug.WriteLine("[CallbackManager] User cancelled");
-                        registration.OnCancel?.Invoke();
+                        Debug.WriteLine($"[CallbackManager] ✓ Found exact callback handler");
+                        InvokeCallback(registration, uri);
+                        return true;
                     }
-                    else
+
+                    // Try scheme://host (without path) as fallback
+                    var baseUrl = $"{callbackScheme}://{callbackHost}";
+                    Debug.WriteLine($"[CallbackManager] Trying base match: {baseUrl}");
+
+                    if (_callbacks.TryGetValue(baseUrl, out var registration2))
                     {
-                        Debug.WriteLine("[CallbackManager] Invoking success callback");
-                        registration.OnCallback?.Invoke(callbackUrl);
+                        Debug.WriteLine($"[CallbackManager] ✓ Found base callback handler");
+                        InvokeCallback(registration2, uri);
+                        return true;
                     }
-                    return true;
+
+                    Debug.WriteLine($"[CallbackManager] ✗ No handler found for {callbackUrl}");
+                    return false;
                 }
-
-                // Try base scheme://host as fallback
-                var baseUrl2 = $"{uri.Scheme}://{uri.Host}";
-                if (_callbacks.TryGetValue(baseUrl2, out var registration2))
-                {
-                    Debug.WriteLine($"[CallbackManager] ✓ Found callback handler (fallback) for {baseUrl2}");
-
-                    if (uri.Query.Contains("error=access_denied") || uri.Query.Contains("error=user_cancelled"))
-                    {
-                        registration2.OnCancel?.Invoke();
-                    }
-                    else
-                    {
-                        registration2.OnCallback?.Invoke(callbackUrl);
-                    }
-                    return true;
-                }
-
-                Debug.WriteLine($"[CallbackManager] ✗ No handler found for {baseUrl}");
-                return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CallbackManager] Error: {ex.Message}\n{ex.StackTrace}");
+                Debug.WriteLine($"[CallbackManager] ✗ Error: {ex.Message}\n{ex.StackTrace}");
                 return false;
             }
         }
+
+        private static void InvokeCallback(CallbackRegistration registration, Uri uri)
+        {
+            if (uri.Query.Contains("error=access_denied") || uri.Query.Contains("error=user_cancelled"))
+            {
+                Debug.WriteLine("[CallbackManager] User cancelled");
+                registration.OnCancel?.Invoke();
+            }
+            else
+            {
+                Debug.WriteLine("[CallbackManager] Invoking success callback");
+                registration.OnCallback?.Invoke(uri.OriginalString);
+            }
+        }
+
         private class CallbackRegistration
         {
             public string ExpectedCallback { get; set; }
@@ -163,6 +199,9 @@ namespace MauiSsoLibrary.Services
         macOS,
         Linux
     }
+    /// <summary>
+    /// Android browser implementation with proper callback handling
+    /// </summary>
     public class AndroidBrowser : IBrowser
     {
         private readonly IPlatformDetector _platformDetector;
@@ -183,12 +222,17 @@ namespace MauiSsoLibrary.Services
                 _tcs = new TaskCompletionSource<BrowserResult>();
                 _expectedCallback = options.EndUrl;
 
-                // Set up callback handling BEFORE opening browser
+                System.Diagnostics.Debug.WriteLine($"\n[AndroidBrowser] ========== Starting Login ==========");
+                System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] StartUrl: {options.StartUrl}");
+                System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] EndUrl (Callback): {options.EndUrl}");
+
+                // CRITICAL: Register callback BEFORE opening browser
                 SetupCallbackHandling(options.EndUrl);
 
-                // Set up cancellation token handling with timeout
+                // Set up cancellation token handling
                 using (cancellationToken.Register(() =>
                 {
+                    System.Diagnostics.Debug.WriteLine("[AndroidBrowser] Cancellation token triggered");
                     _tcs?.TrySetResult(new BrowserResult
                     {
                         ResultType = BrowserResultType.UserCancel
@@ -199,24 +243,29 @@ namespace MauiSsoLibrary.Services
                     var timeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
                     var resultTask = _tcs.Task;
 
+                    // Open browser on main thread
                     _platformDetector.OpenBrowser(options.StartUrl);
+                    System.Diagnostics.Debug.WriteLine("[AndroidBrowser] Browser opened, waiting for callback...");
 
                     var completedTask = await Task.WhenAny(resultTask, timeoutTask);
 
                     if (completedTask == timeoutTask)
                     {
+                        System.Diagnostics.Debug.WriteLine("[AndroidBrowser] Timeout waiting for callback");
                         return new BrowserResult
                         {
                             ResultType = BrowserResultType.Timeout
                         };
                     }
 
-                    return await resultTask;
+                    var result = await resultTask;
+                    System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] Result received: {result.ResultType}");
+                    return result;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"AndroidBrowser error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] ✗ Error: {ex.Message}\n{ex.StackTrace}");
                 return new BrowserResult
                 {
                     ResultType = BrowserResultType.UnknownError,
@@ -226,17 +275,21 @@ namespace MauiSsoLibrary.Services
             finally
             {
                 // Clean up
+                System.Diagnostics.Debug.WriteLine("[AndroidBrowser] Cleaning up callback");
                 CallbackManager.UnregisterCallback(_expectedCallback);
             }
         }
 
         private void SetupCallbackHandling(string expectedCallback)
         {
+            System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] Setting up callback handling for: {expectedCallback}");
+
             CallbackManager.RegisterCallback(
                 expectedCallback,
                 onCallback: (callbackUrl) =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"AndroidBrowser callback received: {callbackUrl}");
+                    System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] ✓ Success callback received");
+                    System.Diagnostics.Debug.WriteLine($"[AndroidBrowser] Callback URL: {callbackUrl}");
                     _tcs?.TrySetResult(new BrowserResult
                     {
                         ResultType = BrowserResultType.Success,
@@ -245,7 +298,7 @@ namespace MauiSsoLibrary.Services
                 },
                 onCancel: () =>
                 {
-                    System.Diagnostics.Debug.WriteLine("AndroidBrowser user cancelled");
+                    System.Diagnostics.Debug.WriteLine("[AndroidBrowser] ✗ User cancelled");
                     _tcs?.TrySetResult(new BrowserResult
                     {
                         ResultType = BrowserResultType.UserCancel
