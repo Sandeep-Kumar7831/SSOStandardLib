@@ -4,7 +4,7 @@ using MauiSso.Plugin.Services;
 using MauiSsoLibrary.Services;
 using SsoMauiApp.Pages;
 using Microsoft.Maui.Storage;
-using MauiSsoLibrary.Services;
+
 namespace SsoMauiApp;
 
 public static class MauiProgram
@@ -20,7 +20,6 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             })
-            // Add SSO plugin with configuration
             .AddMauiSsoPlugin(config =>
             {
                 config.Authority = "https://dev.psshub.honeywell.com/realms/catalystfabric";
@@ -28,11 +27,9 @@ public static class MauiProgram
                 config.RedirectUri = "cfauth://com.honeywell.tools.honeywelllauncher/callback";
                 config.PostLogoutRedirectUri = "cfauth://com.honeywell.tools.honeywelllauncher/callback";
                 config.Scope = "openid email profile";
-                config.EnableDPoP = false; // Enable DPoP
+                config.EnableDPoP = false;
             },
-              customTokenStore: new SharedSecureTokenStore(
-                storageGroupId: "honeywell_launcher"  // Shared prefix for token access
-            ));
+            customTokenStore: new CrossAppTokenStore());
 
         // Register pages
         builder.Services.AddSingleton<MainPage>();
